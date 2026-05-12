@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -58,7 +58,7 @@ export default function LoginScreen() {
       setLoading(true);
 
       const response = await axios.post(
-        "http://app.rsabojonegoro.com:3000/att/Karyawan",
+        "https://api.rsabojonegoro.com:3010/att/Karyawan",
         {
           nip: nip,
           tgl: convertToBackendDate(tgl),
@@ -114,53 +114,61 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Image
-          source={require("../assets/images/logorsa.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
 
-        <Text style={styles.title}>ABSENSI</Text>
-        <Text style={styles.subtitle}>RS Aisyiyah Bojonegoro</Text>
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <Image
+            source={require("../assets/images/logorsa.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
-        <Text style={styles.label}>NIP</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Masukkan NIP"
-          value={nip}
-          onChangeText={setNip}
-          keyboardType="number-pad"
-        />
+          <Text style={styles.title}>ABSENSI</Text>
+          <Text style={styles.subtitle}>RS Aisyiyah Bojonegoro</Text>
 
-        <Text style={styles.label}>Tanggal Lahir</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="dd-mm-yyyy"
-          keyboardType="number-pad"
-          maxLength={10}
-          value={tgl}
-          onChangeText={formatTanggal}
-        />
+          <Text style={styles.label}>NIP</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Masukkan NIP"
+            value={nip}
+            onChangeText={setNip}
+            keyboardType="number-pad"
+          />
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Masuk</Text>
-          )}
-        </TouchableOpacity>
+          <Text style={styles.label}>Tanggal Lahir</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="dd-mm-yyyy"
+            keyboardType="number-pad"
+            maxLength={10}
+            value={tgl}
+            onChangeText={formatTanggal}
+          />
 
-        <Text style={styles.note}>
-          Gunakan NIP dan tanggal lahir sesuai data kepegawaian.
-        </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Masuk</Text>
+            )}
+          </TouchableOpacity>
+
+          <Text style={styles.note}>
+            Gunakan NIP dan tanggal lahir sesuai data kepegawaian.
+          </Text>
+        </View>
       </View>
-    </View>
+    </>
   );
 }
 

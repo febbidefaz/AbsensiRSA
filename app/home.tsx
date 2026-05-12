@@ -71,7 +71,7 @@ export default function HomeScreen() {
     setModalShift(false);
 
     try {
-      const url = "http://app.rsabojonegoro.com:3000/att/presensi";
+      const url = "https://api.rsabojonegoro.com:3010/att/presensi";
 
       const payload = {
         nip: karyawan.nip,
@@ -119,7 +119,7 @@ export default function HomeScreen() {
       }
 
       await axios.post(
-        "http://app.rsabojonegoro.com:3000/att/kodepresensi",
+        "https://api.rsabojonegoro.com:3010/att/kodepresensi",
         {
           kode: kodeNumber,
         },

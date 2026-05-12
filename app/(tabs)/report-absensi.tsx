@@ -72,6 +72,26 @@ export default function ReportAbsensiScreen() {
 
     const namaHari = hari[d.getDay()];
 
+    return `${namaHari},\n${dd}-${mm}-${yyyy}`;
+  };
+
+  const formatDisplayDateBawah = (date: string) => {
+    const hari = [
+      "Minggu",
+      "Senin",
+      "Selasa",
+      "Rabu",
+      "Kamis",
+      "Jumat",
+      "Sabtu",
+    ];
+
+    const [yyyy, mm, dd] = date.split("-");
+
+    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+
+    const namaHari = hari[d.getDay()];
+
     return `${namaHari}, ${dd}-${mm}-${yyyy}`;
   };
 
@@ -100,7 +120,7 @@ export default function ReportAbsensiScreen() {
       setLoading(true);
 
       const response = await axios.post(
-        "http://app.rsabojonegoro.com:3000/att/report/nipperiode",
+        "https://api.rsabojonegoro.com:3010/att/report/nipperiode",
         {
           nip: params.nip,
           bDate: bDate,
@@ -241,7 +261,7 @@ export default function ReportAbsensiScreen() {
                 ]}
               >
                 <Text style={styles.colTanggal}>
-                  {formatDisplayDate(item.tmsk)}
+                  {formatDisplayDateBawah(item.tmsk)}
                 </Text>
 
                 <Text style={styles.colShift}>{item.shift || "-"}</Text>
@@ -413,10 +433,12 @@ const styles = StyleSheet.create({
   dateButton: {
     backgroundColor: "#F5F7FB",
     borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 13,
+    paddingHorizontal: 10,
+    height: 64,
     borderWidth: 1,
     borderColor: "#E0E0E0",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   dateButtonText: {
@@ -424,6 +446,7 @@ const styles = StyleSheet.create({
     color: "#222",
     fontWeight: "800",
     textAlign: "center",
+    lineHeight: 20,
   },
 
   tableHeader: {
