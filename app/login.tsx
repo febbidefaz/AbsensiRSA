@@ -96,17 +96,7 @@ export default function LoginScreen() {
 
       Alert.alert(
         "Login Gagal",
-        JSON.stringify(
-          {
-            payload: {
-              nip: nip.trim(),
-              tgl: backendDate,
-            },
-            error: error?.response?.data || error.message,
-          },
-          null,
-          2,
-        ),
+        "NIP atau tanggal lahir tidak ditemukan, silahkan kontak PSDI"
       );
     } finally {
       setLoading(false);
@@ -136,6 +126,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="Masukkan NIP"
+            placeholderTextColor="#888"
             value={nip}
             onChangeText={setNip}
             keyboardType="number-pad"
@@ -145,6 +136,7 @@ export default function LoginScreen() {
           <TextInput
             style={styles.input}
             placeholder="dd-mm-yyyy"
+            placeholderTextColor="#888"
             keyboardType="number-pad"
             maxLength={10}
             value={tgl}
@@ -164,7 +156,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <Text style={styles.note}>
-            Gunakan NIP dan tanggal lahir sesuai data kepegawaian.
+            Gunakan NIP dan tanggal lahir sesuai data PSDI
           </Text>
         </View>
       </View>
