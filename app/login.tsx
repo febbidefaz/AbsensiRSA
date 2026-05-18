@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -96,7 +97,7 @@ export default function LoginScreen() {
 
       Alert.alert(
         "Login Gagal",
-        "NIP atau tanggal lahir tidak ditemukan, silahkan kontak PSDI"
+        "NIP atau tanggal lahir tidak ditemukan, silahkan kontak PSDI",
       );
     } finally {
       setLoading(false);
@@ -105,6 +106,7 @@ export default function LoginScreen() {
 
   return (
     <>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F8F5" />
       <Stack.Screen
         options={{
           headerShown: false,
@@ -119,7 +121,7 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
 
-          <Text style={styles.title}>ABSENSI</Text>
+          <Text style={styles.title}>E-SDI</Text>
           <Text style={styles.subtitle}>RS Aisyiyah Bojonegoro</Text>
 
           <Text style={styles.label}>NIP</Text>
