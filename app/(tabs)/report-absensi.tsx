@@ -2,6 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +13,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+// ==========================================
+// KONFIGURASI
+// ==========================================
+
+const API_URL = "https://api.rsabojonegoro.com:3010/att/report/nipperiode";
+
+const TIME_ZONE = "Asia/Jakarta";
+
+// ==========================================
+// TYPE DATA ABSENSI
+// ==========================================
 
 type AbsenItem = {
   id: number;
@@ -25,22 +38,133 @@ type AbsenItem = {
   ruang: string;
 };
 
-const getToday = () => {
-  const d = new Date();
-  return d.toISOString().slice(0, 10);
+// ==========================================
+// TANGGAL HARI INI WIB
+// ==========================================
+
+const getToday = (): string => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const nilai = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
+  return nilai("year") + "-" + nilai("month") + "-" + nilai("day");
 };
 
-const getFirstDayOfMonth = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}-01`;
+// ==========================================
+// TANGGAL 1 BULAN BERJALAN WIB
+// ==========================================
+
+const getFirstDayOfMonth = (): string => {
+  const today = getToday();
+  return `${today.substring(0, 7)}-01`;
 };
 
-const formatJam = (jam?: string) => {
+// ==========================================
+// FORMAT TANGGAL YYYY-MM-DD
+// ==========================================
+
+const formatBackendDate = (date: Date): string => {
+  const yyyy = date.getFullYear();
+
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+
+  const dd = String(date.getDate()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+// ==========================================
+// MENGUBAH STRING KE DATE PICKER
+// ==========================================
+
+const toDateObject = (tanggal: string): Date => {
+  const [yyyy, mm, dd] = tanggal.split("-");
+
+  return new Date(Number(yyyy), Number(mm) - 1, Number(dd), 12, 0, 0);
+};
+
+// ==========================================
+// AMBIL TANGGAL DARI API
+// ==========================================
+
+const ambilTanggal = (value?: string): string => {
+  if (!value) return "";
+
+  // Mendukung format:
+  // 2026-11-04
+  // 2026-11-04T00:00:00
+  // 2026-11-04 00:00:00
+  //
+  // Untuk tanggal presensi yang disimpan
+  // sebagai tanggal kalender, jangan
+  // dikonversi lagi menggunakan UTC.
+
+  const cocok = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (cocok) {
+    return `${cocok[1]}-${cocok[2]}-${cocok[3]}`;
+  }
+
+  return "";
+};
+
+// ==========================================
+// TAMPILAN TANGGAL BAHASA INDONESIA
+// ==========================================
+
+const formatDisplayDate = (
+  tanggal: string,
+  barisBaru: boolean = false
+): string => {
+  const bersih = ambilTanggal(tanggal);
+
+  if (!bersih) return "-";
+
+  const hari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+  const [yyyy, mm, dd] = bersih.split("-");
+
+  const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd), 12, 0, 0);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  const namaHari = hari[date.getDay()];
+
+  const pemisah = barisBaru ? ",\n" : ", ";
+
+  return `${namaHari}${pemisah}${dd}-${mm}-${yyyy}`;
+};
+
+// ==========================================
+// FORMAT JAM DARI API
+// ==========================================
+
+const formatJam = (jam?: string): string => {
   if (!jam) return "-";
-  return jam.slice(0, 5);
+
+  const value = String(jam);
+
+  // HH:mm:ss atau HH:mm
+  const cocokJam = value.match(/(?:^|T|\s)(\d{2}):(\d{2})/);
+
+  if (cocokJam) {
+    return `${cocokJam[1]}:${cocokJam[2]}`;
+  }
+
+  return "-";
 };
+
+// ==========================================
+// HALAMAN REPORT ABSENSI
+// ==========================================
 
 export default function ReportAbsensiScreen() {
   const params = useLocalSearchParams<{
@@ -51,68 +175,36 @@ export default function ReportAbsensiScreen() {
   }>();
 
   const [loading, setLoading] = useState(false);
+
   const [dataAbsen, setDataAbsen] = useState<AbsenItem[]>([]);
-  const [bDate, setBDate] = useState(getFirstDayOfMonth());
-  const [eDate, setEDate] = useState(getToday());
 
-  const formatDisplayDate = (date: string) => {
-    const hari = [
-      "Minggu",
-      "Senin",
-      "Selasa",
-      "Rabu",
-      "Kamis",
-      "Jumat",
-      "Sabtu",
-    ];
+  // TANGGAL OTOMATIS WIB
+  const [bDate, setBDate] = useState<string>(getFirstDayOfMonth);
 
-    const [yyyy, mm, dd] = date.split("-");
-
-    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-
-    const namaHari = hari[d.getDay()];
-
-    return `${namaHari},\n${dd}-${mm}-${yyyy}`;
-  };
-
-  const formatDisplayDateBawah = (date: string) => {
-    const hari = [
-      "Minggu",
-      "Senin",
-      "Selasa",
-      "Rabu",
-      "Kamis",
-      "Jumat",
-      "Sabtu",
-    ];
-
-    const [yyyy, mm, dd] = date.split("-");
-
-    const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-
-    const namaHari = hari[d.getDay()];
-
-    return `${namaHari}, ${dd}-${mm}-${yyyy}`;
-  };
-
-  const toDateObject = (date: string) => {
-    const [yyyy, mm, dd] = date.split("-");
-    return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  };
-
-  const formatBackendDate = (date: Date) => {
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const dd = String(date.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  };
+  const [eDate, setEDate] = useState<string>(getToday);
 
   const [showBDatePicker, setShowBDatePicker] = useState(false);
+
   const [showEDatePicker, setShowEDatePicker] = useState(false);
 
-  const getRiwayat = async () => {
+  // ========================================
+  // AMBIL DATA LAPORAN
+  // ========================================
+
+  const getRiwayat = async (
+    tanggalAwal: string = bDate,
+    tanggalAkhir: string = eDate
+  ) => {
     if (!params.nip) {
-      Alert.alert("Gagal", "NIP tidak ditemukan.");
+      Alert.alert("Gagal", "NIP karyawan tidak ditemukan.");
+      return;
+    }
+
+    if (tanggalAwal > tanggalAkhir) {
+      Alert.alert(
+        "Periode Tidak Valid",
+        "Tanggal awal tidak boleh melebihi tanggal akhir."
+      );
       return;
     }
 
@@ -120,90 +212,124 @@ export default function ReportAbsensiScreen() {
       setLoading(true);
 
       const response = await axios.post(
-        "https://api.rsabojonegoro.com:3010/att/report/nipperiode",
+        API_URL,
         {
           nip: params.nip,
-          bDate: bDate,
-          eDate: eDate,
+          bDate: tanggalAwal,
+          eDate: tanggalAkhir,
         },
         {
           headers: {
             "Content-Type": "application/json",
           },
-        },
+          timeout: 20000,
+        }
       );
 
-      setDataAbsen(response.data?.response || []);
+      const hasil = response.data?.response;
+
+      setDataAbsen(Array.isArray(hasil) ? hasil : []);
     } catch (error: any) {
-      console.log("ERROR REPORT:", error?.response?.data || error.message);
+      console.log("ERROR REPORT:", error?.response?.data || error?.message);
+
       setDataAbsen([]);
-      Alert.alert("Data Kosong", "Riwayat absensi tidak ditemukan.");
+
+      Alert.alert(
+        "Data Tidak Ditemukan",
+        error?.response?.data?.metadata?.message ||
+          error?.response?.data?.message ||
+          "Riwayat absensi tidak ditemukan."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // ========================================
+  // LOAD LAPORAN PERTAMA KALI
+  // ========================================
+
   useEffect(() => {
-    getRiwayat();
+    const awalWIB = getFirstDayOfMonth();
+    const akhirWIB = getToday();
+
+    setBDate(awalWIB);
+    setEDate(akhirWIB);
+
+    void getRiwayat(awalWIB, akhirWIB);
   }, []);
+
+  // ========================================
+  // KEMBALI KE HOME
+  // ========================================
+
+  const kembaliHome = () => {
+    router.replace({
+      pathname: "/home",
+      params: {
+        nip: params.nip,
+        nm: params.nm,
+        room: params.room,
+        foto: params.foto,
+      },
+    });
+  };
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.container}>
+        {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
+            onPress={kembaliHome}
             activeOpacity={0.7}
-            onPress={() =>
-              router.replace({
-                pathname: "/home",
-                params: {
-                  nip: params.nip,
-                  nm: params.nm,
-                  room: params.room,
-                  foto: params.foto,
-                },
-              })
-            }
           >
             <Text style={styles.backText}>‹</Text>
           </TouchableOpacity>
 
           <View>
             <Text style={styles.headerTitle}>Report Absensi</Text>
+
             <Text style={styles.headerSubtitle}>{params.nm || "-"}</Text>
           </View>
         </View>
 
+        {/* FILTER TANGGAL */}
         <View style={styles.filterCard}>
           <View style={styles.dateRow}>
+            {/* TANGGAL AWAL */}
             <View style={styles.dateCol}>
               <Text style={styles.inputLabel}>Tanggal Awal</Text>
+
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowBDatePicker(true)}
               >
                 <Text style={styles.dateButtonText}>
-                  {formatDisplayDate(bDate)}
+                  {formatDisplayDate(bDate, true)}
                 </Text>
               </TouchableOpacity>
             </View>
 
+            {/* TANGGAL AKHIR */}
             <View style={styles.dateCol}>
               <Text style={styles.inputLabel}>Tanggal Akhir</Text>
+
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowEDatePicker(true)}
               >
                 <Text style={styles.dateButtonText}>
-                  {formatDisplayDate(eDate)}
+                  {formatDisplayDate(eDate, true)}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
+          {/* DATE PICKER AWAL */}
           {showBDatePicker && (
             <DateTimePicker
               value={toDateObject(bDate)}
@@ -211,13 +337,15 @@ export default function ReportAbsensiScreen() {
               display={Platform.OS === "ios" ? "spinner" : "calendar"}
               onChange={(event, selectedDate) => {
                 setShowBDatePicker(false);
-                if (selectedDate) {
+
+                if (event.type !== "dismissed" && selectedDate) {
                   setBDate(formatBackendDate(selectedDate));
                 }
               }}
             />
           )}
 
+          {/* DATE PICKER AKHIR */}
           {showEDatePicker && (
             <DateTimePicker
               value={toDateObject(eDate)}
@@ -225,18 +353,25 @@ export default function ReportAbsensiScreen() {
               display={Platform.OS === "ios" ? "spinner" : "calendar"}
               onChange={(event, selectedDate) => {
                 setShowEDatePicker(false);
-                if (selectedDate) {
+
+                if (event.type !== "dismissed" && selectedDate) {
                   setEDate(formatBackendDate(selectedDate));
                 }
               }}
             />
           )}
 
-          <TouchableOpacity style={styles.filterButton} onPress={getRiwayat}>
+          {/* TOMBOL REPORT */}
+          <TouchableOpacity
+            style={[styles.filterButton, loading && styles.disabledButton]}
+            onPress={() => void getRiwayat()}
+            disabled={loading}
+          >
             <Text style={styles.filterButtonText}>Tampilkan Report</Text>
           </TouchableOpacity>
         </View>
 
+        {/* LOADING */}
         {loading ? (
           <ActivityIndicator
             size="large"
@@ -245,32 +380,47 @@ export default function ReportAbsensiScreen() {
           />
         ) : (
           <ScrollView contentContainerStyle={styles.listContainer}>
+            {/* HEADER TABEL */}
             <View style={styles.tableHeader}>
               <Text style={styles.colTanggalHeader}>Tanggal</Text>
+
               <Text style={styles.colShiftHeader}>Shift</Text>
+
               <Text style={styles.colJamHeader}>Masuk</Text>
+
               <Text style={styles.colJamHeader}>Pulang</Text>
             </View>
 
-            {dataAbsen.map((item, index) => (
-              <View
-                key={item.id}
-                style={[
-                  styles.absenRow,
-                  index === dataAbsen.length - 1 && styles.lastRow,
-                ]}
-              >
-                <Text style={styles.colTanggal}>
-                  {formatDisplayDateBawah(item.tmsk)}
+            {/* DATA ABSENSI */}
+            {dataAbsen.length > 0 ? (
+              dataAbsen.map((item, index) => (
+                <View
+                  key={`${item.id}-${index}`}
+                  style={[
+                    styles.absenRow,
+                    index === dataAbsen.length - 1 && styles.lastRow,
+                  ]}
+                >
+                  <Text style={styles.colTanggal}>
+                    {formatDisplayDate(item.tmsk)}
+                  </Text>
+
+                  <Text style={styles.colShift}>{item.shift || "-"}</Text>
+
+                  <Text style={styles.colJam}>{formatJam(item.jmsk)}</Text>
+
+                  <Text style={styles.colJam}>{formatJam(item.jplg)}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>Tidak Ada Data Absensi</Text>
+
+                <Text style={styles.emptyText}>
+                  Silakan pilih periode tanggal dan tampilkan laporan kembali.
                 </Text>
-
-                <Text style={styles.colShift}>{item.shift || "-"}</Text>
-
-                <Text style={styles.colJam}>{formatJam(item.jmsk)}</Text>
-
-                <Text style={styles.colJam}>{formatJam(item.jplg)}</Text>
               </View>
-            ))}
+            )}
           </ScrollView>
         )}
       </View>
@@ -278,11 +428,16 @@ export default function ReportAbsensiScreen() {
   );
 }
 
+// ==========================================
+// STYLES
+// ==========================================
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FB",
   },
+
   header: {
     backgroundColor: "#1565C0",
     paddingTop: 48,
@@ -294,22 +449,35 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
+
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   backText: {
     color: "#FFFFFF",
     fontSize: 28,
     fontWeight: "800",
     marginTop: -2,
   },
+
   headerTitle: {
     color: "#FFFFFF",
     fontSize: 22,
     fontWeight: "800",
   },
+
   headerSubtitle: {
     color: "#DCEBFF",
     fontSize: 13,
     marginTop: 3,
   },
+
   filterCard: {
     backgroundColor: "#FFFFFF",
     marginHorizontal: 22,
@@ -319,108 +487,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     elevation: 5,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#555",
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  input: {
-    backgroundColor: "#F5F7FB",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  filterButton: {
-    backgroundColor: "#1565C0",
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 18,
-  },
-  filterButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 15,
-  },
-  summaryCard: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 22,
-    marginTop: 16,
-    borderRadius: 20,
-    padding: 18,
-    elevation: 5,
-  },
-  summaryLabel: {
-    color: "#777",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  summaryValue: {
-    color: "#222",
-    fontSize: 16,
-    fontWeight: "800",
-    marginTop: 4,
-  },
-  totalText: {
-    marginTop: 12,
-    color: "#1565C0",
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  listContainer: {
-    padding: 22,
-    paddingBottom: 40,
-    paddingHorizontal: 22,
-    overflow: "hidden",
-    borderRadius: 16,
-  },
-  absenCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 14,
-    elevation: 3,
-  },
-  cardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
-  },
-  dateText: {
-    color: "#222",
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  shiftBadge: {
-    backgroundColor: "#E3F2FD",
-    color: "#1565C0",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    fontWeight: "800",
-    fontSize: 12,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  label: {
-    color: "#777",
-    fontSize: 14,
-  },
-  value: {
-    color: "#222",
-    fontSize: 14,
-    fontWeight: "800",
-  },
+
   dateRow: {
     flexDirection: "row",
     gap: 12,
@@ -428,6 +495,14 @@ const styles = StyleSheet.create({
 
   dateCol: {
     flex: 1,
+  },
+
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#555",
+    marginBottom: 6,
+    marginTop: 10,
   },
 
   dateButton: {
@@ -447,6 +522,31 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
     lineHeight: 20,
+  },
+
+  filterButton: {
+    backgroundColor: "#1565C0",
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 18,
+  },
+
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  filterButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+
+  listContainer: {
+    padding: 22,
+    paddingBottom: 40,
+    overflow: "hidden",
+    borderRadius: 16,
   },
 
   tableHeader: {
@@ -521,14 +621,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
 
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-
-    backgroundColor: "rgba(255,255,255,0.18)",
-
-    justifyContent: "center",
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 28,
     alignItems: "center",
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+
+  emptyTitle: {
+    color: "#555",
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+
+  emptyText: {
+    color: "#888",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 8,
+    textAlign: "center",
   },
 });

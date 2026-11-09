@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import { Stack, router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import {
   Alert,
@@ -33,7 +33,7 @@ export default function HomeScreen() {
   >(null);
 
   const [aksiAbsen, setAksiAbsen] = React.useState<"masuk" | "pulang" | null>(
-    null,
+    null
   );
 
   const pilihAksi = (aksi: "masuk" | "pulang") => {
@@ -56,7 +56,7 @@ export default function HomeScreen() {
       if (!hasil.granted) {
         Alert.alert(
           "Izin Kamera",
-          "Izin kamera diperlukan untuk scan barcode.",
+          "Izin kamera diperlukan untuk scan barcode."
         );
         return;
       }
@@ -90,7 +90,7 @@ export default function HomeScreen() {
       Alert.alert(
         "Berhasil",
         response.data?.metadata?.message ||
-          `Presensi ${aksiAbsen} berhasil disimpan.`,
+          `Presensi ${aksiAbsen} berhasil disimpan.`
       );
     } catch (error: any) {
       console.log("ERROR PRESENSI:", error?.response?.data || error.message);
@@ -99,7 +99,7 @@ export default function HomeScreen() {
         "Gagal",
         error?.response?.data?.message ||
           error?.response?.data?.metadata?.message ||
-          "Presensi gagal diproses.",
+          "Presensi gagal diproses."
       );
     }
   };
@@ -127,7 +127,7 @@ export default function HomeScreen() {
           headers: {
             "Content-Type": "application/json",
           },
-        },
+        }
       );
 
       if (!shiftTerpilih) {
@@ -143,7 +143,7 @@ export default function HomeScreen() {
         "QR Salah",
         error?.response?.data?.message ||
           error?.response?.data?.metadata?.message ||
-          "Kode QR tidak sesuai.",
+          "Kode QR tidak sesuai."
       );
     }
   };
@@ -240,6 +240,35 @@ export default function HomeScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* MENU ABSENSI KOORDINAT GPS */}
+          <TouchableOpacity
+            style={styles.coordinateCard}
+            onPress={() =>
+              router.push({
+                pathname: "/absensi",
+                params: {
+                  nip: karyawan.nip,
+                  nm: karyawan.nm,
+                  room: karyawan.room,
+                },
+              })
+            }
+          >
+            <Ionicons
+              name="location"
+              size={38}
+              color="#FFFFFF"
+              style={styles.coordinateIcon}
+            />
+            <View style={styles.coordinateTextBox}>
+              <Text style={styles.coordinateTitle}>Absensi Koordinat</Text>
+              <Text style={styles.coordinateDesc}>
+                Presensi masuk / pulang berdasarkan lokasi GPS rumah sakit
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
         </ScrollView>
 
         <Modal visible={modalAksi} transparent animationType="slide">
@@ -500,6 +529,33 @@ const styles = StyleSheet.create({
   },
   historyCard: {
     backgroundColor: "#087B3E",
+  },
+  coordinateCard: {
+    backgroundColor: "#6A43B6",
+    borderRadius: 22,
+    padding: 18,
+    marginTop: 14,
+    minHeight: 105,
+    flexDirection: "row",
+    alignItems: "center",
+    elevation: 4,
+  },
+  coordinateIcon: {
+    marginRight: 16,
+  },
+  coordinateTextBox: {
+    flex: 1,
+  },
+  coordinateTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  coordinateDesc: {
+    color: "#F0E9FF",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
   },
   menuIcon: {
     color: "#FFFFFF",

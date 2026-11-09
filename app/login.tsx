@@ -68,7 +68,7 @@ export default function LoginScreen() {
           headers: {
             "Content-Type": "application/json",
           },
-        },
+        }
       );
 
       const dataKaryawan =
@@ -97,7 +97,7 @@ export default function LoginScreen() {
 
       Alert.alert(
         "Login Gagal",
-        "NIP atau tanggal lahir tidak ditemukan, silahkan kontak PSDI",
+        "NIP atau tanggal lahir tidak ditemukan, silahkan kontak PSDI"
       );
     } finally {
       setLoading(false);
@@ -125,13 +125,16 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>RS Aisyiyah Bojonegoro</Text>
 
           <Text style={styles.label}>NIP</Text>
+
           <TextInput
             style={styles.input}
             placeholder="Masukkan NIP"
             placeholderTextColor="#888"
             value={nip}
             onChangeText={setNip}
-            keyboardType="number-pad"
+            keyboardType="default"
+            autoCapitalize="none"
+            autoCorrect={false}
           />
 
           <Text style={styles.label}>Tanggal Lahir</Text>
